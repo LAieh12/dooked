@@ -8,6 +8,7 @@
 #include <boost/asio/thread_pool.hpp>
 #include <ctime>
 #include <iomanip>
+#include <iterator>
 #include <set>
 #include <sstream>
 #include <spdlog/spdlog.h>
@@ -144,6 +145,16 @@ void report_seen_alerts(
   }
   report_last_seen_records(*previous_result, make_current_key_set(current_result),
                            rt_args);
+}
+
+std::vector<json_data_t>
+active_previous_records(std::vector<json_data_t> const &previous_result) {
+  std::vector<json_data_t> active_records{};
+  active_records.reserve(previous_result.size());
+  std::copy_if(previous_result.cbegin(), previous_result.cend(),
+               std::back_inserter(active_records),
+               [](json_data_t const &record) { return record.currently_seen; });
+  return active_records;
 }
 
 void compare_http_result(int const base_cl, json_data_t const &prev_http_result,
@@ -487,9 +498,15 @@ void start_name_checking(runtime_args_t &&rt_args) {
   // compare old with new result -- only if we had previous record
   if (rt_args.previous_data) {
     auto &previous_data = *rt_args.previous_data;
+    auto active_previous_data = active_previous_records(previous_data);
 
     // sort the (domain)names in (alphabetical, record type) tuple order
     std::sort(previous_data.begin(), previous_data.end(),
+              [](json_data_t const &a, json_data_t const &b) {
+                return std::tie(a.domain_name, a.type) <
+                       std::tie(b.domain_name, b.type);
+              });
+    std::sort(active_previous_data.begin(), active_previous_data.end(),
               [](json_data_t const &a, json_data_t const &b) {
                 return std::tie(a.domain_name, a.type) <
                        std::tie(b.domain_name, b.type);
@@ -502,7 +519,7 @@ void start_name_checking(runtime_args_t &&rt_args) {
                   return std::tie(a.type, a.rdata) < std::tie(b.type, b.rdata);
                 });
     }
-    return compare_results(*rt_args.previous_data, result_map,
+    return compare_results(active_previous_data, result_map,
                            rt_args.content_length);
   }
 }

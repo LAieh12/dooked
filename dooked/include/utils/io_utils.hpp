@@ -36,6 +36,7 @@ struct json_data_t {
   std::string first_seen{};
   std::string last_seen{};
   int seen{};
+  bool currently_seen{true};
   int ttl{};
   int http_code{};
   int content_length{};
@@ -68,6 +69,14 @@ struct json_data_t {
       }
       return json::number_integer_t{};
     };
+    auto const read_optional_bool = [&json_object](char const *key,
+                                                   bool const fallback) {
+      auto const iter = json_object.find(key);
+      if (iter != json_object.cend() && iter->second.is_boolean()) {
+        return iter->second.get<json::boolean_t>();
+      }
+      return fallback;
+    };
 
     data.first_seen = read_optional_string("first-seen");
     if (data.first_seen.empty()) {
@@ -78,6 +87,9 @@ struct json_data_t {
       data.last_seen = read_optional_string("last_seen");
     }
     data.seen = static_cast<int>(read_optional_int("seen"));
+    data.currently_seen = read_optional_bool("currently-seen", true);
+    data.currently_seen = read_optional_bool("currently_seen",
+                                             data.currently_seen);
     return data;
   }
 };
@@ -150,6 +162,7 @@ inline json::object_t make_historical_dns_record_json(
   dns_object["first-seen"] = std::move(first_seen);
   dns_object["last-seen"] = std::move(last_seen);
   dns_object["seen"] = previous_record.seen > 0 ? previous_record.seen : 1;
+  dns_object["currently-seen"] = false;
   return dns_object;
 }
 
@@ -170,6 +183,7 @@ json::object_t make_dns_record_json(
     dns_object["first-seen"] = current_datetime;
     dns_object["last-seen"] = current_datetime;
     dns_object["seen"] = 1;
+    dns_object["currently-seen"] = true;
     return dns_object;
   }
 
@@ -182,6 +196,7 @@ json::object_t make_dns_record_json(
   dns_object["first-seen"] = std::move(first_seen);
   dns_object["last-seen"] = current_datetime;
   dns_object["seen"] = previous_record.seen > 0 ? previous_record.seen + 1 : 2;
+  dns_object["currently-seen"] = true;
   return dns_object;
 }
 
