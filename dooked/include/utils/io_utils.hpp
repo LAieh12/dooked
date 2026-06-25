@@ -309,10 +309,10 @@ std::optional<std::vector<T>> read_json_string(Iterator const begin,
         auto internal_object = json_item.second.get<json::object_t>();
         auto const domain_detail_list =
             internal_object["dns_probe"].get<json::array_t>();
-        auto const content_length =
-            internal_object["content_length"].get<json::number_integer_t>();
-        auto const http_code =
-            internal_object["http_code"].get<json::number_integer_t>();
+        auto const content_length = static_cast<int>(
+            internal_object["content_length"].get<json::number_integer_t>());
+        auto const http_code = static_cast<int>(
+            internal_object["http_code"].get<json::number_integer_t>());
 
         for (auto const &domain_detail : domain_detail_list) {
           auto domain_object = domain_detail.get<json::object_t>();
